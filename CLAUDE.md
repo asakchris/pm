@@ -12,6 +12,12 @@ A Project Management MVP web app with a Kanban board and AI chat assistant. User
 
 ## Commands
 
+### Environment
+Create a `.env` file at repo root before starting the container:
+```
+OPENROUTER_API_KEY=<your key>
+```
+
 ### Running the app (Docker)
 ```bash
 # Mac
@@ -38,13 +44,15 @@ npm run test:e2e      # Playwright E2E tests
 npm run test:all      # All tests
 ```
 
-### Backend (from `backend/` directory)
+### Backend (from repo root)
 ```bash
-pytest                           # Run all tests
-pytest tests/test_main.py        # Single test file
-pytest -k "test_name"            # Single test by name
-PM_BASE_URL=http://localhost:8000 pytest tests/test_integration.py  # Integration tests against running server
+PYTHONPATH=. pytest backend/tests/                                      # Run all tests
+PYTHONPATH=. pytest backend/tests/test_main.py                          # Single test file
+PYTHONPATH=. pytest -k "test_name" backend/tests/                       # Single test by name
+PYTHONPATH=. PM_BASE_URL=http://localhost:8000 pytest backend/tests/test_integration.py  # Integration tests against running server
 ```
+
+> `PYTHONPATH=.` (repo root) is required so `app.*` imports resolve correctly.
 
 ## Architecture
 
@@ -55,10 +63,17 @@ PM_BASE_URL=http://localhost:8000 pytest tests/test_integration.py  # Integratio
 - `lib/api.ts` - API client functions
 - `lib/kanban.ts` - Data types (Card, Column, BoardData) and utilities
 
-**Backend (`backend/app/main.py`):**
-- Single file containing all routes, database setup, and AI integration
+**Backend (`backend/app/`):**
+- `main.py` - App entry point, mounts static assets, registers routers, runs `init_db()` on startup
+- `routes/board.py` - Board, column, and card CRUD endpoints
+- `routes/chat.py` - `/api/chat` endpoint for AI interaction
+- `ai.py` - OpenRouter client, structured output parsing, board action application
+- `database.py` - SQLite setup, `init_db()`, all DB query helpers
+- `models.py` - Pydantic request/response models
+- `config.py` - Env var loading (OPENROUTER_API_KEY, PM_DB_PATH, PM_STATIC_DIR), seed data
+- `dependencies.py` - FastAPI deps: `get_db` (SQLite conn), `get_username` (from `X-User` header, defaults to `"user"`)
 - SQLite tables: users, boards, columns, cards
-- Key routes: `/api/board` (GET), `/api/columns/{id}` (CRUD), `/api/cards/{id}` (CRUD), `/api/chat` (AI)
+- Key routes: `/api/board` (GET), `/api/columns` (POST), `/api/columns/{id}` (PUT/DELETE), `/api/cards` (POST), `/api/cards/{id}` (PUT/DELETE), `/api/chat` (POST)
 - Frontend static files served from `/` in production
 
 **ID Prefixing:** Frontend prefixes IDs with `col-` and `card-` for drag-and-drop stability, strips them for API calls.
