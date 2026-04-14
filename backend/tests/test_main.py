@@ -18,7 +18,7 @@ def test_health_check() -> None:
 def test_root_html() -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert "PM MVP" in response.text
+    assert "Kanban Studio" in response.text
 
 
 def test_api_hello() -> None:
