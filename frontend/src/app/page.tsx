@@ -136,7 +136,6 @@ export default function Home() {
     }
     try {
       await deleteCard(cardIdNumber, username);
-      refreshBoard();
     } catch (err) {
       if (process.env.NODE_ENV === "development") console.error(err);
       setBoardError("Unable to remove the card.");
@@ -167,7 +166,6 @@ export default function Home() {
         },
         username
       );
-      refreshBoard();
     } catch (err) {
       if (process.env.NODE_ENV === "development") console.error(err);
       setBoardError("Unable to move the card.");

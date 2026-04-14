@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.database import init_db
 import app.ai as ai_module
+import app.routes.chat as chat_module
 
 
 class _DummyResponse:
@@ -57,6 +58,7 @@ def test_chat_applies_actions(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(ai_module.httpx, "post", _mock_post)
+    monkeypatch.setattr(chat_module, "_check_rate_limit", lambda _username: None)
 
     response = client.post("/api/chat", json={"message": "Add a card."})
     assert response.status_code == 200

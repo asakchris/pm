@@ -12,7 +12,7 @@ type KanbanCardProps = {
 export const KanbanCard = ({ card, columnId, onDelete }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
-      id: `card-${card.id}`,
+      id: card.id,
       data: { cardId: card.id, columnId },
     });
 
@@ -32,7 +32,7 @@ export const KanbanCard = ({ card, columnId, onDelete }: KanbanCardProps) => {
       )}
       {...attributes}
       {...listeners}
-      data-testid={`card-${card.id}`}
+      data-testid={card.id}
     >
       <div className="flex items-start justify-between gap-3">
         <div>

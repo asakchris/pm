@@ -3,6 +3,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import (
+    clamp_position,
     fetch_board,
     get_or_create_board,
     get_or_create_user,
@@ -39,11 +40,7 @@ def create_column(
     ).fetchall()
     ids = ordered_ids(columns)
 
-    insert_position = payload.position
-    if insert_position is None or insert_position > len(ids):
-        insert_position = len(ids)
-    if insert_position < 0:
-        insert_position = 0
+    insert_position = clamp_position(payload.position, len(ids))
 
     cursor = conn.execute(
         "INSERT INTO columns (board_id, title, position) VALUES (?, ?, ?)",
@@ -147,11 +144,7 @@ def create_card(
     ).fetchall()
     ids = ordered_ids(cards)
 
-    insert_position = payload.position
-    if insert_position is None or insert_position > len(ids):
-        insert_position = len(ids)
-    if insert_position < 0:
-        insert_position = 0
+    insert_position = clamp_position(payload.position, len(ids))
 
     cursor = conn.execute(
         "INSERT INTO cards (column_id, title, details, position) VALUES (?, ?, ?, ?)",
@@ -224,11 +217,7 @@ def update_card(
         ).fetchall()
         target_ids = ordered_ids(target_cards)
 
-        insert_position = payload.position
-        if insert_position is None or insert_position > len(target_ids):
-            insert_position = len(target_ids)
-        if insert_position < 0:
-            insert_position = 0
+        insert_position = clamp_position(payload.position, len(target_ids))
 
         target_ids.insert(insert_position, card_id)
 

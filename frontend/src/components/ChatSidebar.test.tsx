@@ -33,4 +33,28 @@ describe("ChatSidebar", () => {
 
     expect(handleSend).toHaveBeenCalledWith("Add a card");
   });
+
+  it("displays an error message when error prop is set", () => {
+    render(
+      <ChatSidebar
+        messages={[]}
+        onSend={() => undefined}
+        isSending={false}
+        error="Unable to reach the assistant right now."
+      />
+    );
+
+    expect(
+      screen.getByText("Unable to reach the assistant right now.")
+    ).toBeInTheDocument();
+  });
+
+  it("disables the send button and input while sending", () => {
+    render(
+      <ChatSidebar messages={[]} onSend={() => undefined} isSending={true} />
+    );
+
+    expect(screen.getByRole("button", { name: /send/i })).toBeDisabled();
+    expect(screen.getByLabelText("Chat message")).toBeDisabled();
+  });
 });

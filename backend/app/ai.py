@@ -10,7 +10,7 @@ from app.config import (
     OPENROUTER_TEMPERATURE,
     get_openrouter_api_key,
 )
-from app.database import get_or_create_board, ordered_ids, resequence_positions
+from app.database import clamp_position, get_or_create_board, ordered_ids, resequence_positions
 from app.models import (
     ChatHistoryItem,
     CreateCardAction,
@@ -127,8 +127,10 @@ def build_structured_messages(
 
 def apply_actions(
     conn: sqlite3.Connection, user_id: int, actions: list[ChatAction]
-) -> None:
+) -> int:
+    """Apply AI actions to the board. Returns the number of actions that were skipped."""
     board_id = get_or_create_board(conn, user_id)
+    skipped = 0
 
     for action in actions:
         if isinstance(action, CreateCardAction):
@@ -137,6 +139,7 @@ def apply_actions(
                 (int(action.columnId), board_id),
             ).fetchone()
             if not column:
+                skipped += 1
                 continue
 
             cards = conn.execute(
@@ -144,12 +147,7 @@ def apply_actions(
                 (int(action.columnId),),
             ).fetchall()
             ids = ordered_ids(cards)
-
-            insert_position = action.position
-            if insert_position is None or insert_position > len(ids):
-                insert_position = len(ids)
-            if insert_position < 0:
-                insert_position = 0
+            insert_position = clamp_position(action.position, len(ids))
 
             cursor = conn.execute(
                 "INSERT INTO cards (column_id, title, details, position) VALUES (?, ?, ?, ?)",
@@ -158,9 +156,8 @@ def apply_actions(
             card_id = int(cursor.lastrowid)
             ids.insert(insert_position, card_id)
             resequence_positions(conn, "cards", ids, "AND column_id = ?", (int(action.columnId),))
-            continue
 
-        if isinstance(action, UpdateCardAction):
+        elif isinstance(action, UpdateCardAction):
             card_row = conn.execute(
                 """
                 SELECT cards.id
@@ -171,6 +168,7 @@ def apply_actions(
                 (int(action.cardId), board_id),
             ).fetchone()
             if not card_row:
+                skipped += 1
                 continue
             if action.title is not None:
                 conn.execute(
@@ -182,9 +180,8 @@ def apply_actions(
                     "UPDATE cards SET details = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     (action.details, int(action.cardId)),
                 )
-            continue
 
-        if isinstance(action, MoveCardAction):
+        elif isinstance(action, MoveCardAction):
             card = conn.execute(
                 """
                 SELECT cards.id, cards.column_id
@@ -195,6 +192,7 @@ def apply_actions(
                 (int(action.cardId), board_id),
             ).fetchone()
             if not card:
+                skipped += 1
                 continue
 
             target_column = conn.execute(
@@ -202,6 +200,7 @@ def apply_actions(
                 (int(action.columnId), board_id),
             ).fetchone()
             if not target_column:
+                skipped += 1
                 continue
 
             current_column_id = int(card["column_id"])
@@ -220,13 +219,7 @@ def apply_actions(
                 (target_column_id,),
             ).fetchall()
             target_ids = ordered_ids(target_cards)
-
-            insert_position = action.position
-            if insert_position is None or insert_position > len(target_ids):
-                insert_position = len(target_ids)
-            if insert_position < 0:
-                insert_position = 0
-
+            insert_position = clamp_position(action.position, len(target_ids))
             target_ids.insert(insert_position, int(action.cardId))
 
             conn.execute(
@@ -235,9 +228,8 @@ def apply_actions(
             )
             resequence_positions(conn, "cards", source_ids, "AND column_id = ?", (current_column_id,))
             resequence_positions(conn, "cards", target_ids, "AND column_id = ?", (target_column_id,))
-            continue
 
-        if isinstance(action, DeleteCardAction):
+        elif isinstance(action, DeleteCardAction):
             card = conn.execute(
                 """
                 SELECT cards.id, cards.column_id
@@ -248,6 +240,7 @@ def apply_actions(
                 (int(action.cardId), board_id),
             ).fetchone()
             if not card:
+                skipped += 1
                 continue
             column_id = int(card["column_id"])
             conn.execute("DELETE FROM cards WHERE id = ?", (int(action.cardId),))
@@ -258,3 +251,4 @@ def apply_actions(
             resequence_positions(conn, "cards", ordered_ids(remaining), "AND column_id = ?", (column_id,))
 
     conn.commit()
+    return skipped

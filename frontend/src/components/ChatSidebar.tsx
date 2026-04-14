@@ -92,7 +92,8 @@ export const ChatSidebar = ({
           }}
           placeholder="Ask the assistant"
           rows={3}
-          className="w-full resize-none rounded-2xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+          disabled={isSending}
+          className="w-full resize-none rounded-2xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)] disabled:opacity-60"
           aria-label="Chat message"
         />
         <button

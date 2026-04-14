@@ -44,7 +44,11 @@ def static_fallback(full_path: str):
     if not STATIC_DIR:
         return HTMLResponse("Not found", status_code=404)
 
-    requested_path = STATIC_DIR / full_path
+    static_root = STATIC_DIR.resolve()
+    requested_path = (STATIC_DIR / full_path).resolve()
+    if not str(requested_path).startswith(str(static_root)):
+        return HTMLResponse("Not found", status_code=404)
+
     if requested_path.is_dir():
         index_path = requested_path / "index.html"
         if index_path.exists():
@@ -53,7 +57,7 @@ def static_fallback(full_path: str):
     if requested_path.exists():
         return FileResponse(requested_path)
 
-    index_path = STATIC_DIR / "index.html"
+    index_path = static_root / "index.html"
     if index_path.exists():
         return FileResponse(index_path)
 
